@@ -1,0 +1,176 @@
+# PHP OOP MVC приложение с нуля
+
+Мы создадим свою реализацию PHP фреймворка. Каждый HTTP запрос будет проходить через единственный файл *index.php* и чтобы это реализовать мы будем использовать файл *.htaccess*, который будет переопределять дефолтное поведение сервера Apache и перезаписывать правила URL.
+
+Например мы можем создать класс `Posts` в котором мы будем создавать методы, доступ к которым будет происходить по такому принципу, например:
+
+* `http://app.loc/index.php?url=posts/index`
+* `http://app.loc/index.php?url=posts/add`
+* `http://app.loc/index.php?url=posts/edit/1`
+
+```php
+class Posts{
+    public function __construct(){
+        $this->postModel = $this->model('post');
+    }
+    public function index(){
+        //..
+    }
+    public function add(){
+        //..
+    }
+    public function edit($id){
+        $post = $this->postModel->fetchPost($id);
+
+        $this->view('edit', ['post' => $post]);
+    }
+}
+
+<h1><?php echo $data['title'];?></h1>
+```
+
+Это всего лишь псеводокод, но очень похож на реальный, который мы напишем в будущем.
+
+`http://app.loc/index.php?url=posts/edit/1` - такой URL выглядит не очень в глазах поисковых систем и мы можем сделать его короче, чтобы он стал такого вида `http://app.loc/posts/edit/1`. Это мы реализуем написав правило в файле *.htaccess*.
+
+Также нам нужно определить дефолтный контроллер при загрузке главной страницы сайта, а также дефолтный метод каждого контроллера, например `index()`. Такие принципы используют почти в каждом PHP фреймворке.
+
+## Создание файловой структуры проекта
+
+В папке *public/* будет находится файл *index.php* который будет обрабатывать абсолютно все HTTP запросы, а также статически файлы шаблона, такие как CSS, JavaScript.
+
+В папке *app/libraries/* будут находится высокоуровневные файлы нашего приложения, например *Core.php*, *Database.php*, *Controller.php*.
+
+Также в папке *app/* будут находится файлы моделей *app/models/*, виды *app/views/* и контроллеры *app/controllers/*.
+
+Также здесь у нас будет находится папка с хелперами *app/helpers/*, которые будут выполнять какую то небольшую работу, например функции для работы с редиректами, сессиями и т. д.
+
+В папке *app/config/* будут файлы конфигурации.
+
+С помощью файла *app/bootstrap.php* мы будем подгружать всё что нам нужно в нашем приложении.
+
+Чтобы не было прямого доступа к содержимому папки *app/* мы создадим файл *.htaccess* в котором запишем следующее:
+
+```
+Options -Indexes
+```
+
+Теперь при переходе в папку *app/* мы будем получать **Access forbidden!** и 403 ошибку. Дефолтное значение, которое отрывает доступ к текущей папке выглядит так - `Options +Indexes`.
+
+## Единая точка входа
+
+В папке *public/* мы создадим файл *.htaccess* и положим туда следующи код:
+
+*public/.htaccess*
+
+```
+<IfModule mod_rewrite.c>
+    Options -Multiviews
+    RewriteEngine On
+    RewriteBase /public
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^(.+)$ index.php?url=$1 [QSA,L]
+</IfModule>
+```
+
+При обращении в папку *public/* все запросы будут попадать в файл *index.php*, при условии, что там нет реального файла, который бы соответствовал запросу.
+
+В файл *public/index.php* мы подключим *app/bootstrap.php*.
+
+*public/index.php*
+
+```php
+<?php
+
+require_once "../app/bootstrap.php";
+```
+
+Для достоверности добавит текст и проверим:
+
+*app/bootstrap.php*
+
+```php
+BOOTSTRAP
+```
+
+Чтобы все запросы по умолчанию переадресововались в папку *public/* нужно создать ещё один файл *.htaccess* в корне приложения:
+
+*.htaccess*
+
+```
+<IfModule mod_rewrite.c>
+  RewriteEngine on
+  RewriteRule ^$ public/ [L]
+  RewriteRule (.*) public/$1 [L]
+</IfModule>
+```
+
+Теперь подключим файлы ядра:
+
+*app/bootstrap.php*
+
+```php
+<?php
+
+// Load libraries
+
+require_once "libraries/Core.php";
+require_once "libraries/Database.php";
+require_once "libraries/Controller.php";
+```
+
+В файле ядра создадим класс в котором определим параметры по умолчанию - дефолтный контроллер, метод и набор параметров:
+
+*app/libraries/Core.php*
+
+```php
+<?php
+
+class Core{
+    protected $currentController = 'Pages';
+    protected $currentMethod = 'index';
+    protected $params = [];
+}
+```
+
+Теперь создадим функцию где будем получать текущий URL и через констуктор будет её вызывать автоматически при создании нового объекта `Core`.
+
+*app/libraries/Core.php*
+
+```php
+<?php
+
+class Core{
+    protected $currentController = 'Pages';
+    protected $currentMethod = 'index';
+    protected $params = [];
+
+    public function __construct(){
+        return $this->getUrl();
+    }
+
+    public function getUrl(){
+        echo $_GET['url'];
+    }
+}
+```
+
+Инициализируем этот класс:
+
+*public/index.php*
+
+```php
+<?php
+
+require_once "../app/bootstrap.php";
+
+// Init Core Library
+$url = new Core();
+```
+
+Проверим результат запустив примерно такой запрос в строку браузера - `http://mvcapp.loc/index.php?url=test` и на выходе мы должны получить **test** в окно браузера.
+
+Если взглянуть в файл *public/.htaccess*, то мы увидим что у нас есть это строка `RewriteRule ^(.+)$ index.php?url=$1 [QSA,L]`, а это означает, что мы можем вовсе убрать с URL `index.php?url=`, а вместо это просто передать параметр, который автоматически будет параметром `url` и если мы введем `http://mvcapp.loc/test`, то мы получим всё тот же результат.
+
+А если мы запустим запрос, который близок к реальности, например `http://mvcapp.loc/posts/edit/1`, то мы получим то что нам нужно.
