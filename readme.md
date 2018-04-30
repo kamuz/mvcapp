@@ -303,7 +303,7 @@ $this->params = $url ? array_values($url) : [];
 call_user_func_array([$this->currentController, $this->currentMethod], $this->params);
 ```
 
-В нашем контролле создадим функцию и попробуем к ней обратится через URL:
+В нашем контролле создадим функцию и попробуем к ней обратится через URL, например таким образом `http://mvcapp.loc/pages/about/1`:
 
 *app/controllers/Pages.php*
 
@@ -326,7 +326,7 @@ class Pages{
 }
 ```
 
-Кроме этого мы создали функцию `index()` чтобы у нас не возникало ошибки, если мы не укажем второй сегметр URL.
+Кроме этого мы создали функцию `index()` чтобы у нас не возникало ошибки, если мы не укажем второй сегметр URL `http://mvcapp.loc/pages/`.
 
 В итоге мы должны получить такой контроллер ядра:
 
@@ -385,3 +385,64 @@ class Core{
     }
 }
 ```
+
+## Класс базового контроллера
+
+В этом классе мы будем загружать модели и виды. В функцию `model()` мы будем передавать название модели, которую нужно загрузить в наш контроллер и инициализировать новый объект модели.
+
+В функцию `view()` мы будем передавать два параметра - название файла и данные, которые мы можем получить из модели и использовать в виде.
+
+*app/libraries/Controller.php*
+
+```php
+<?php
+
+/**
+ * Base Controller
+ * Load the models and views
+ */
+
+class Controller{
+    // Load model
+    public function model($model){
+        // Require model file
+        require_once '../app/models/' . $model . '.php';
+        // Instatiante model
+        return new $model;
+    }
+    // Load view
+    public function view($view, $data = []){
+        // Check for view file
+        if(file_exists('../app/views/' . $view . '.php')){
+            // Require view file
+            require_once '../app/views/' . $view . '.php';
+        }
+        else{
+            // View does not exists
+            die('View does not exists');
+        }
+    }
+}
+```
+
+Чтобы проверить работу, можем вызвать метод `view()` внутри контроллера `Pages`.
+
+*app/controllers/Pages.php*
+
+```php
+<?php
+
+class Pages extends Controller{
+    public function __construct(){
+
+    }
+
+    public function index(){
+        $this->view("pages");
+    }
+
+    //..
+}
+```
+
+Каждый наш контроллер должен наследовать базовый контроллер, который мы подключаем в файле *app/bootstrap.php*. Пробуем обратится к нашему контроллера `Pages` - `http://mvcapp.loc/pages/` и если мы получим сообщение **View does not exists** значит на данном этапе мы справились с заданием.
