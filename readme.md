@@ -174,3 +174,84 @@ $url = new Core();
 Если взглянуть в файл *public/.htaccess*, то мы увидим что у нас есть это строка `RewriteRule ^(.+)$ index.php?url=$1 [QSA,L]`, а это означает, что мы можем вовсе убрать с URL `index.php?url=`, а вместо это просто передать параметр, который автоматически будет параметром `url` и если мы введем `http://mvcapp.loc/test`, то мы получим всё тот же результат.
 
 А если мы запустим запрос, который близок к реальности, например `http://mvcapp.loc/posts/edit/1`, то мы получим то что нам нужно.
+
+## Загружаем контроллер через URL
+
+Для начала нам нужно сделать проверку, существует ли у нас `$_GET['url']`, затем обрезаем слеш в конце с помощью `rtrim()`, фильтруем URL с помощью `filter_var()`. Затем нам вырезать из URL строки каждый параметр и поместить в массив с помощью функции `explode()`.
+
+Далее в конструкторе распечатаем наш массив, чтобы удостовериться что всё у нас работает на данном этапе.
+
+Затем мы проверяем существует ли у нас файл контроллера с названием, который был передан через URL параметр и если это так, то мы делаем его текущим контроллером. В конечном итоге мы подключаем текущий контроллер с помощью `require_once` и инициируем класс данного контроллера.
+
+*app/libraries/Core.php*
+
+```php
+<?php
+
+/**
+ * App Core Class
+ * Creates URL & load core controller
+ * URL FORMAT - /controller/method/params
+ */
+
+class Core{
+    protected $currentController = 'Pages';
+    protected $currentMethod = 'index';
+    protected $params = [];
+
+    public function __construct(){
+        // print_r($this->getUrl());
+        $url = $this->getUrl();
+        // Look in controllers for this value
+        if(file_exists('../app/controllers/' . ucwords($url['0']) . '.php')){
+            // If exists, set as controller
+            $this->currentController = ucwords($url['0']);
+            // Unset 0 Index
+            unset($url[0]);
+        }
+        // Require the controller
+        require_once '../app/controllers/' . $this->currentController . '.php';
+        // Instantiate controller class
+        $this->currentController = new $this->currentController;
+    }
+
+    public function getUrl(){
+        if(isset($_GET['url'])){
+            $url = rtrim($_GET['url'], '/');
+            $url = filter_var($url, FILTER_SANITIZE_URL);
+            $url = explode('/', $url);
+            return $url;
+        }
+    }
+}
+```
+
+Теперь создадим контроллеры *Pages.php* и *Posts.php* чтобы убедиться что у нас всё работает так как нам нужно.
+
+*app/controllers/Pages.php*
+
+```php
+<?php
+
+class Pages{
+    public function __construct(){
+        echo "Pages loaded";
+    }
+}
+```
+
+Проверяем работает ли у нас контроллер по умолчанию, для этого передавать какие либо параметры не объязательно, просто запускаем главную страницу сайта.
+
+*app/controllers/Posts.php*
+
+```php
+<?php
+
+class Pages{
+    public function __construct(){
+        echo "Pages loaded";
+    }
+}
+```
+
+Чтобы проверить что у нас загружается требуемый нам контроллер нам теперь нужно передать параметры, например `http://mvcapp.loc/posts/edit/1`.
