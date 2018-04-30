@@ -268,6 +268,7 @@ if(isset($url[1])){
     // Check to see if method exists in controller
     if(method_exists($this->currentController, $url[1])){
         $this->currentMethod = $url[1];
+        unset($url[1]);
     }
 }
 echo $this->currentMethod;
@@ -287,6 +288,100 @@ class Pages{
 
     public function about(){
 
+    }
+}
+```
+
+Чтобы в массив URL нам прилетели одни параметры, на каждом из предыдущих этапов мы удаляли в конце текущий ключ массива. Далее, мы проверяем, если у нас есть параметры, то мы их сохраняем в массив, а если нет, то возвращаем пустой массив. После чего с помощью функции `call_user_func_array()` мы вызываем функции с переданными параметрами.
+
+*app/libraries/Core.php*
+
+```php
+// Get params
+$this->params = $url ? array_values($url) : [];
+// Call a callback with array of params
+call_user_func_array([$this->currentController, $this->currentMethod], $this->params);
+```
+
+В нашем контролле создадим функцию и попробуем к ней обратится через URL:
+
+*app/controllers/Pages.php*
+
+```php
+<?php
+
+class Pages{
+    public function __construct(){
+
+    }
+
+    public function index(){
+        echo "Index function";
+    }
+
+    public function about($id){
+        echo "This is about function<br>";
+        echo "This is ID - {$id}";
+    }
+}
+```
+
+Кроме этого мы создали функцию `index()` чтобы у нас не возникало ошибки, если мы не укажем второй сегметр URL.
+
+В итоге мы должны получить такой контроллер ядра:
+
+*app/libraries/Core.php*
+
+```php
+<?php
+
+/**
+ * App Core Class
+ * Creates URL & load core controller
+ * URL FORMAT - /controller/method/params
+ */
+
+class Core{
+    protected $currentController = 'Pages';
+    protected $currentMethod = 'index';
+    protected $params = [];
+
+    public function __construct(){
+        // print_r($this->getUrl());
+        $url = $this->getUrl();
+        // Look in controllers for this value
+        if(file_exists('../app/controllers/' . ucwords($url['0']) . '.php')){
+            // If exists, set as controller
+            $this->currentController = ucwords($url['0']);
+            // Unset 0 Index
+            unset($url[0]);
+        }
+        // Require the controller
+        require_once '../app/controllers/' . $this->currentController . '.php';
+        // Instantiate controller class
+        $this->currentController = new $this->currentController;
+        // Check for second part of url
+        if(isset($url[1])){
+            // Check to see if method exists in controller
+            if(method_exists($this->currentController, $url[1])){
+                $this->currentMethod = $url[1];
+                // Unset 1 index
+                unset($url[1]);
+            }
+        }
+        // Get params
+        $this->params = $url ? array_values($url) : [];
+        // Call a callback with array of params
+        call_user_func_array([$this->currentController, $this->currentMethod], $this->params);
+    }
+
+    public function getUrl(){
+        if(isset($_GET['url'])){
+            $url = rtrim($_GET['url'], '/');
+            $url = filter_var($url, FILTER_SANITIZE_URL);
+            $url = explode('/', $url);
+            return $url;
+        }
     }
 }
 ```
