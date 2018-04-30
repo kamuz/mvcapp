@@ -255,3 +255,38 @@ class Pages{
 ```
 
 Чтобы проверить что у нас загружается требуемый нам контроллер нам теперь нужно передать параметры, например `http://mvcapp.loc/posts/edit/1`.
+
+## Проверка и получение метода и его параметров
+
+Далее в конструкторе мы сделаем проверку, если у нас существует второй сегмент в URL, тогда мы проверяем существует ли такой метод внутри текущего контроллера и если да, тогда мы указываем его в качестве текущего метода. Для проверки выведем текущих контроллер.
+
+*app/libraries/Core.php*
+
+```php
+// Check for second part of url
+if(isset($url[1])){
+    // Check to see if method exists in controller
+    if(method_exists($this->currentController, $url[1])){
+        $this->currentMethod = $url[1];
+    }
+}
+echo $this->currentMethod;
+```
+
+И не забываем добавить данный метод в наш контроллер:
+
+*app/controllers/Pages.php*
+
+```php
+<?php
+
+class Pages{
+    public function __construct(){
+        
+    }
+
+    public function about(){
+
+    }
+}
+```

@@ -25,6 +25,14 @@ class Core{
         require_once '../app/controllers/' . $this->currentController . '.php';
         // Instantiate controller class
         $this->currentController = new $this->currentController;
+        // Check for second part of url
+        if(isset($url[1])){
+            // Check to see if method exists in controller
+            if(method_exists($this->currentController, $url[1])){
+                $this->currentMethod = $url[1];
+            }
+        }
+        echo $this->currentMethod;
     }
 
     public function getUrl(){
