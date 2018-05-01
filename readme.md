@@ -583,3 +583,226 @@ spl_autoload_register(function($className){
 
 <?php require APPROOT . '/views/inc/footer.php' ?>
 ```
+
+## Класс базы данных
+
+В начале создадим параметры подключения к БД:
+
+*app/config/config.php*
+
+```php
+<?php
+
+// DB params
+define('DB_HOST', 'localhost');
+define('DB_USER', 'root');
+define('DB_PADD', '');
+define('DB_NAME', 'mvcapp');
+//..
+```
+
+Теперь создадим класс для работы с базой данных:
+
+*app/libraries/Database.php*
+
+```php
+<?php
+
+/**
+ * PDO Database Class
+ * Connect to database
+ * Create prepared statement
+ * Bind value
+ * Return row and results
+ */
+
+class Database{
+    private $host = DB_HOST;
+    private $user = DB_USER;
+    private $pass = DB_PASS;
+    private $dbname = DB_NAME;
+
+    private $dbh;
+    private $stmt;
+    private $error;
+
+    public function __construct(){
+        // Set DSN
+        $dsn = 'mysql:host=' . $this->host . ';dbname=' . $this->dbname;
+        $option = array(
+            PDO::ATTR_PERSISTENT => true,
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+        );
+        // Create PDO instance
+        try{
+            $this->dbh = new PDO($dsn, $this->user, $this->pass, $this->options);
+        }
+        catch(PDOException $e){
+            echo $this->error = $e->getMessage();
+        }
+    }
+}
+```
+
+В конструкторе мы создаём подключение к БД и на случай если что-то пойдёт не так будем создавать исключение и выводить сообщение.
+
+Создадим файл модели, где в конструкторе создаём новый экземпляр класса `Database`:
+
+*app/models/Page.php*
+
+```php
+<?php
+
+class Page{
+    private $db;
+
+    public function __construct(){
+        $this->db = new Database;
+    }
+}
+```
+
+В файле контроллера мы подгружаем нашу модель в конструкторе:
+
+*app/controllers/Pages.php*
+
+```php
+<?php
+
+class Pages extends Controller{
+    public function __construct(){
+        $this->postModel = $this->model('Page');
+    }
+    //..
+```
+
+Как мы помним в файле базового контроллера с помощью метода `model()` мы подключаем одноименный файл модели в папке с моделями.
+
+Теперь если мы не видим никаких ошибок, значит на данном этапе мы справились с задачей, но чтобы не сомневаться, можно изменить параметр подключения к БД, чтобы мы увидели ошибку.
+
+Далее мы создадим набор методов для класса `Database`, которые упростят нам жизнь при работе с БД:
+
+*app/libraries/Database.php*
+
+```php
+//..
+// Prepare statement with query
+public function query($sql){
+    $this->stmt = $this->dbh->prepare($sql);
+}
+
+// Bind values
+public function bind($param, $value, $type = null){
+    if(is_null($type)){
+        switch(true){
+            case is_int($value):
+                $type = PDO::PARAM_INT;
+                break;
+            case is_bool($value):
+                $type = PDO::PARAM_BOOL;
+                break;
+            case is_null($value):
+                $type = PDO::PARAM_NULL;
+                break;
+            default:
+                $type = PDO::PARAM_STR;
+        }
+    }
+
+    $this->stmt->bindValue($param, $value, $type);
+}
+
+// Execute the prepared statement
+public function execute(){
+    return $this->stmt->execute();
+}
+
+// Get result set as array of objects
+public function resultSet(){
+    $this->execute();
+    return $this->stmt->fetchAll(PDO::FETCH_OBJ);
+}
+
+// Get single record as object
+public function single(){
+    $this->execute();
+    return $this->stmt->fetch(PDO::FETCH_OBJ);
+}
+
+// Get row count
+public function rowCount(){
+    return $this->stmt->rowCount();
+}
+```
+
+Подготавливаем запрос, сопоставляем параметр, значение и определяем его тип, выполняем подготовленный запрос, получаем результат в виде массива объектов, получаем единичный объект и считаем количество возвращённых строк из БД.
+
+Чтобы можно было дальше работать, давайте создадим новую таблицу в нашей БД и добавим несколько строк:
+
+```sql
+CREATE TABLE `posts` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `title` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8;
+
+INSERT INTO `posts` VALUES ('1', 'Post One');
+INSERT INTO `posts` VALUES ('2', 'Post Two');
+```
+
+В модели с помощью функции `getPosts()` мы получим все записи из таблицы `posts` и вернём их в виде массива объектов:
+
+*app/models/Page.php*
+
+```php
+<?php
+
+class Page{
+    private $db;
+
+    public function __construct(){
+        $this->db = new Database;
+    }
+
+    public function getPosts(){
+        $this->db->query('SELECT * FROM posts');
+        return $this->db->resultSet();
+    }
+}
+```
+
+Теперь мы можем получить данные в контроллере из модели и передать их вид:
+
+*app/controllers/Pages.php*
+
+```php
+//..
+public function index(){
+    $posts = $this->postModel->getPosts();
+    $data = [
+        'title' => 'Welcome',
+        'posts' => $posts
+    ];
+
+    $this->view("pages/index", $data);
+}
+//..
+```
+
+В виде мы их можем уже вывести с помощью цикла `foreach`:
+
+*app/views/pages/index.php*
+
+```php
+<?php require APPROOT . '/views/inc/header.php' ?>
+
+<h1><?php echo $data['title'] ?></h1>
+
+<ul>
+<?php foreach($data['posts'] as $post): ?>
+    <li><?php echo $post->title ?></li>
+<?php endforeach; ?>
+</ul>
+
+<?php require APPROOT . '/views/inc/footer.php' ?>
+```
