@@ -546,3 +546,40 @@ spl_autoload_register(function($className){
     require_once 'libraries/' . $className . '.php';
 });
 ```
+
+## Подключаем хедер, футер, стили и скрипты
+
+Здесь всё просто и в этом нам помогут те константы которые мы создавали ранее:
+
+*app/views/inc/header.php*
+
+```php
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title><?php echo SITENAME ?></title>
+    <link rel="stylesheet" href="<?php echo URLROOT ?>/css/style.css">
+</head>
+<body>
+```
+
+*app/views/inc/footer.php*
+
+```php
+<script src="<?php echo URLROOT ?>/js/main.js"></script>
+</body>
+</html>
+```
+
+Теперь осталось подключить эти файлы в видах и проверить подгружаются ли у нас файлы стилей и скриптов:
+
+*app/views/pages/index.php*
+
+```php
+<?php require APPROOT . '/views/inc/header.php' ?>
+
+<h1><?php echo $data['title'] ?></h1>
+
+<?php require APPROOT . '/views/inc/footer.php' ?>
+```
