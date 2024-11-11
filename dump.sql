@@ -1,32 +1,23 @@
-/*
-Navicat MySQL Data Transfer
+-- Adminer 4.8.1 MySQL 5.6.51 dump
 
-Source Server         : openserver
-Source Server Version : 50638
-Source Host           : localhost:3306
-Source Database       : mvcapp
+SET NAMES utf8;
+SET time_zone = '+00:00';
+SET foreign_key_checks = 0;
+SET sql_mode = 'NO_AUTO_VALUE_ON_ZERO';
 
-Target Server Type    : MYSQL
-Target Server Version : 50638
-File Encoding         : 65001
+DROP DATABASE IF EXISTS `mvcapp`;
+CREATE DATABASE `mvcapp` /*!40100 DEFAULT CHARACTER SET utf8 */;
+USE `mvcapp`;
 
-Date: 2018-05-03 00:15:05
-*/
-
-SET FOREIGN_KEY_CHECKS=0;
-
--- ----------------------------
--- Table structure for posts
--- ----------------------------
 DROP TABLE IF EXISTS `posts`;
 CREATE TABLE `posts` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
--- ----------------------------
--- Records of posts
--- ----------------------------
-INSERT INTO `posts` VALUES ('1', 'Post One');
-INSERT INTO `posts` VALUES ('2', 'Post Two');
+INSERT INTO `posts` (`id`, `title`) VALUES
+(1,	'Post One'),
+(2,	'Post Two');
+
+-- 2024-11-11 19:47:46
