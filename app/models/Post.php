@@ -1,6 +1,6 @@
 <?php
 
-class Page{
+class Post{
     private $db;
 
     public function __construct(){
